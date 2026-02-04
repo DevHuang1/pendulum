@@ -1,12 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <title>Mass-Spring Block Lab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laplace Mass-Spring Lab</title>
     <style>
       :root {
         --accent: #00ff88;
@@ -18,22 +15,22 @@
         color: #888;
         font-family: "Inter", sans-serif;
         overflow: hidden;
-        touch-action: none;
+        display: flex;
       }
       canvas {
         display: block;
+        flex-grow: 1;
       }
 
       .controls {
-        position: fixed;
-        left: 20px;
-        top: 20px;
-        width: 200px;
-        background: rgba(20, 20, 25, 0.9);
+        width: 280px;
+        background: rgba(20, 20, 25, 0.95);
         padding: 20px;
-        border-radius: 12px;
-        border: 1px solid #222;
+        border-right: 1px solid #222;
         backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
       }
       .slider-group {
         margin-bottom: 15px;
@@ -55,7 +52,6 @@
         height: 4px;
         appearance: none;
         background: #333;
-        border-radius: 2px;
         outline: none;
       }
       input[type="range"]::-webkit-slider-thumb {
@@ -67,22 +63,37 @@
         cursor: pointer;
       }
 
-      .formula {
-        font-size: 11px;
+      .laplace-box {
         margin-top: 20px;
-        padding-top: 15px;
-        border-top: 1px solid #222;
+        padding: 15px;
+        background: #111;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        color: #eee;
+        font-size: 13px;
+        text-align: center;
+      }
+      #dynamic-eq {
+        color: var(--accent);
+        font-weight: bold;
+        margin-top: 10px;
+        display: block;
+      }
+      .graph-label {
+        font-size: 9px;
+        margin-top: 10px;
         color: #555;
       }
     </style>
   </head>
   <body>
     <div class="controls">
+      <h3 style="color: #fff; font-size: 14px; margin-top: 0">
+        SYSTEM PARAMETERS
+      </h3>
       <div class="slider-group">
-        <div class="label">
-          Stiffness (k) <span class="val" id="kVal">10</span>
-        </div>
-        <input type="range" id="k" min="1" max="50" value="10" />
+        <div class="label">Mass (m) <span class="val" id="mVal">1.0</span></div>
+        <input type="range" id="m" min="0.5" max="5" step="0.1" value="1.0" />
       </div>
       <div class="slider-group">
         <div class="label">
@@ -91,10 +102,26 @@
         <input type="range" id="c" min="0" max="5" step="0.1" value="0.5" />
       </div>
       <div class="slider-group">
-        <div class="label">Mass (m) <span class="val" id="mVal">1.0</span></div>
-        <input type="range" id="m" min="0.5" max="5" step="0.1" value="1.0" />
+        <div class="label">
+          Stiffness (k) <span class="val" id="kVal">15</span>
+        </div>
+        <input type="range" id="k" min="5" max="50" value="15" />
       </div>
-      <div class="formula">Laplace: $X(s) = \frac{F(s)}{ms^2 + cs + k}$</div>
+
+      <div class="laplace-box">
+        <strong>S-Domain Transfer Function:</strong>
+        <span id="dynamic-eq">X(s) = F(s) / (1.0s² + 0.5s + 15)</span>
+      </div>
+      <p style="font-size: 10px; line-height: 1.4; margin-top: 15px">
+        The s^2 term is the mass, s is the damping, and the constant is
+        stiffness.
+      </p>
+      <div class="graph-label">TIME-DOMAIN RESPONSE x(t)</div>
+      <canvas
+        id="graphCanvas"
+        height="100"
+        style="width: 100%; height: 100px; background: #000; border-radius: 4px"
+      ></canvas>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -102,32 +129,38 @@
     <script>
       const canvas = document.getElementById("canvas");
       const ctx = canvas.getContext("2d");
+      const gCanvas = document.getElementById("graphCanvas");
+      const gCtx = gCanvas.getContext("2d");
+
       let w,
         h,
         x = 0,
         v = 0,
-        k = 10,
+        k = 15,
         c = 0.5,
         m = 1.0;
-      let dragging = false;
+      let dragging = false,
+        history = [];
       const dt = 1 / 60;
-      const accentColor =
-        getComputedStyle(document.documentElement)
-          .getPropertyValue("--accent")
-          .trim() || "#00ff88";
 
       const resize = () => {
-        w = canvas.width = window.innerWidth;
+        w = canvas.width = window.innerWidth - 280;
         h = canvas.height = window.innerHeight;
+        gCanvas.width = 240;
+        gCanvas.height = 100;
       };
       window.onresize = resize;
       resize();
+
+      function updateEquation() {
+        document.getElementById("dynamic-eq").innerText =
+          `X(s) = F(s) / (${m}s² + ${c}s + ${k})`;
+      }
 
       function draw() {
         ctx.fillStyle = "#0a0a0c";
         ctx.fillRect(0, 0, w, h);
 
-        // Physics logic
         if (!dragging) {
           let forceSpring = -k * x;
           let forceDamping = -c * v;
@@ -136,53 +169,39 @@
           x += v * dt;
         }
 
-        const centerX = w / 2 + 100; // Offset from controls
-        const equilibriumY = h / 2;
-        const blockY = equilibriumY + x;
+        history.push(x);
+        if (history.length > 100) history.shift();
 
-        // Draw Support
-        ctx.strokeStyle = "#222";
-        ctx.lineWidth = 10;
-        ctx.beginPath();
-        ctx.moveTo(centerX - 60, 40);
-        ctx.lineTo(centerX + 60, 40);
-        ctx.stroke();
-
-        // Draw Spring Coil
-        ctx.strokeStyle = "#444";
+        // Draw System
+        const cx = w / 2,
+          cy = h / 2,
+          bx = cy + x;
+        ctx.strokeStyle = "#333";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(centerX, 40);
-        let coils = 15;
-        for (let i = 0; i <= coils; i++) {
-          let currY = 40 + (i * (blockY - 40)) / coils;
-          let currX = centerX + (i % 2 === 0 ? 20 : -20);
-          if (i === 0 || i === coils) currX = centerX;
-          ctx.lineTo(currX, currY);
-        }
+        ctx.moveTo(cx, 0);
+        ctx.lineTo(cx, bx);
         ctx.stroke();
 
-        // Draw Block (The Mass)
-        ctx.fillStyle = dragging ? "#fff" : accentColor;
-        ctx.shadowBlur = 30;
+        ctx.fillStyle = dragging ? "#fff" : "#00ff88";
+        ctx.shadowBlur = 20;
         ctx.shadowColor = ctx.fillStyle;
-        ctx.fillRect(centerX - 30, blockY, 60, 60);
+        ctx.fillRect(cx - 30, bx, 60, 60);
         ctx.shadowBlur = 0;
 
-        // Indicator for Equilibrium
-        ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = "#222";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(centerX - 100, equilibriumY + 30);
-        ctx.lineTo(centerX + 100, equilibriumY + 30);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        // Draw Graph
+        gCtx.fillStyle = "#000";
+        gCtx.fillRect(0, 0, 240, 100);
+        gCtx.strokeStyle = "#00ff88";
+        gCtx.beginPath();
+        history.forEach((val, i) => {
+          gCtx.lineTo(i * 2.4, 50 + val * 0.5);
+        });
+        gCtx.stroke();
 
         requestAnimationFrame(draw);
       }
 
-      // Interaction
       const handleDrag = (y) => {
         if (dragging) {
           x = y - h / 2 - 30;
@@ -192,25 +211,21 @@
       canvas.onmousedown = () => (dragging = true);
       window.onmouseup = () => (dragging = false);
       window.onmousemove = (e) => handleDrag(e.clientY);
-      canvas.ontouchstart = (e) => {
-        dragging = true;
-        handleDrag(e.touches[0].clientY);
-      };
-      window.ontouchend = () => (dragging = false);
-      window.ontouchmove = (e) => handleDrag(e.touches[0].clientY);
 
-      // Slider logic
+      document.getElementById("m").oninput = (e) => {
+        m = (+e.target.value).toFixed(1);
+        document.getElementById("mVal").innerText = m;
+        updateEquation();
+      };
+      document.getElementById("c").oninput = (e) => {
+        c = (+e.target.value).toFixed(1);
+        document.getElementById("cVal").innerText = c;
+        updateEquation();
+      };
       document.getElementById("k").oninput = (e) => {
         k = +e.target.value;
         document.getElementById("kVal").innerText = k;
-      };
-      document.getElementById("c").oninput = (e) => {
-        c = +e.target.value;
-        document.getElementById("cVal").innerText = c;
-      };
-      document.getElementById("m").oninput = (e) => {
-        m = +e.target.value;
-        document.getElementById("mVal").innerText = m;
+        updateEquation();
       };
 
       draw();
