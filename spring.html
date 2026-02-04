@@ -2,12 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Laplace Mass-Spring Lab</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Laplace Lab - Grid & Long Spring</title>
     <style>
       :root {
         --accent: #00ff88;
         --bg: #0a0a0c;
+        --grid: #141417;
       }
       body {
         margin: 0;
@@ -16,30 +20,50 @@
         font-family: "Inter", sans-serif;
         overflow: hidden;
         display: flex;
+        touch-action: none;
       }
-      canvas {
+
+      canvas#canvas {
         display: block;
         flex-grow: 1;
       }
 
       .controls {
-        width: 280px;
-        background: rgba(20, 20, 25, 0.95);
-        padding: 20px;
+        width: 170px;
+        background: rgba(10, 10, 12, 0.98);
+        padding: 12px;
         border-right: 1px solid #222;
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(15px);
         display: flex;
         flex-direction: column;
         z-index: 10;
+        overflow-y: auto;
       }
+
+      @media (max-width: 600px) {
+        .controls {
+          width: 125px;
+          padding: 8px;
+        }
+        .laplace-box {
+          font-size: 9px !important;
+          padding: 6px !important;
+        }
+        #dynamic-eq {
+          font-size: 8px;
+        }
+        .full-desc {
+          display: none;
+        }
+      }
+
       .slider-group {
-        margin-bottom: 15px;
+        margin-bottom: 12px;
       }
       .label {
-        font-size: 10px;
+        font-size: 8px;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         display: flex;
         justify-content: space-between;
       }
@@ -47,90 +71,110 @@
         color: var(--accent);
         font-family: monospace;
       }
+
       input[type="range"] {
         width: 100%;
-        height: 4px;
+        height: 20px;
         appearance: none;
-        background: #333;
+        background: transparent;
         outline: none;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 2px;
+        background: #333;
       }
       input[type="range"]::-webkit-slider-thumb {
         appearance: none;
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         background: #fff;
         border-radius: 50%;
-        cursor: pointer;
+        margin-top: -7px;
       }
 
       .laplace-box {
-        margin-top: 20px;
-        padding: 15px;
+        margin-top: 10px;
+        padding: 10px;
         background: #111;
-        border-radius: 8px;
+        border-radius: 6px;
         border: 1px solid var(--accent);
         color: #eee;
-        font-size: 13px;
+        font-size: 11px;
         text-align: center;
       }
       #dynamic-eq {
         color: var(--accent);
         font-weight: bold;
-        margin-top: 10px;
+        margin-top: 4px;
         display: block;
       }
-      .graph-label {
+
+      .full-desc {
         font-size: 9px;
+        line-height: 1.3;
         margin-top: 10px;
         color: #555;
+      }
+      .graph-label {
+        font-size: 8px;
+        margin-top: 15px;
+        color: #444;
+        text-transform: uppercase;
+      }
+
+      #graphCanvas {
+        width: 100%;
+        height: 65px;
+        background: #000;
+        border-radius: 4px;
+        margin-top: 5px;
+        border: 1px solid #222;
       }
     </style>
   </head>
   <body>
     <div class="controls">
-      <h3 style="color: #fff; font-size: 14px; margin-top: 0">
-        SYSTEM PARAMETERS
+      <h3
+        style="color: #fff; font-size: 11px; margin-top: 0; letter-spacing: 1px"
+      >
+        SYSTEM PARAMS
       </h3>
+
       <div class="slider-group">
-        <div class="label">Mass (m) <span class="val" id="mVal">1.0</span></div>
+        <div class="label">Mass <span class="val" id="mVal">1.0</span></div>
         <input type="range" id="m" min="0.5" max="5" step="0.1" value="1.0" />
       </div>
+
       <div class="slider-group">
-        <div class="label">
-          Damping (c) <span class="val" id="cVal">0.5</span>
-        </div>
+        <div class="label">Damping <span class="val" id="cVal">0.5</span></div>
         <input type="range" id="c" min="0" max="5" step="0.1" value="0.5" />
       </div>
+
       <div class="slider-group">
-        <div class="label">
-          Stiffness (k) <span class="val" id="kVal">15</span>
-        </div>
+        <div class="label">Stiffness <span class="val" id="kVal">15</span></div>
         <input type="range" id="k" min="5" max="50" value="15" />
       </div>
 
       <div class="laplace-box">
-        <strong>S-Domain Transfer Function:</strong>
         <span id="dynamic-eq">X(s) = F(s) / (1.0s² + 0.5s + 15)</span>
       </div>
-      <p style="font-size: 10px; line-height: 1.4; margin-top: 15px">
-        The s^2 term is the mass, s is the damping, and the constant is
-        stiffness.
+
+      <p class="full-desc">
+        s²: Mass (Inertia)<br />s: Damping (Friction)<br />Const: Stiffness
       </p>
-      <div class="graph-label">TIME-DOMAIN RESPONSE x(t)</div>
-      <canvas
-        id="graphCanvas"
-        height="100"
-        style="width: 100%; height: 100px; background: #000; border-radius: 4px"
-      ></canvas>
+
+      <div class="graph-label">Response x(t)</div>
+      <canvas id="graphCanvas"></canvas>
     </div>
 
     <canvas id="canvas"></canvas>
 
     <script>
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      const gCanvas = document.getElementById("graphCanvas");
-      const gCtx = gCanvas.getContext("2d");
+      const canvas = document.getElementById("canvas"),
+        ctx = canvas.getContext("2d");
+      const gCanvas = document.getElementById("graphCanvas"),
+        gCtx = gCanvas.getContext("2d");
 
       let w,
         h,
@@ -138,18 +182,19 @@
         v = 0,
         k = 15,
         c = 0.5,
-        m = 1.0;
-      let dragging = false,
+        m = 1.0,
+        dragging = false,
         history = [];
       const dt = 1 / 60;
 
       const resize = () => {
-        w = canvas.width = window.innerWidth - 280;
+        const sw = window.innerWidth > 600 ? 170 : 125;
+        w = canvas.width = window.innerWidth - sw;
         h = canvas.height = window.innerHeight;
-        gCanvas.width = 240;
-        gCanvas.height = 100;
+        gCanvas.width = sw - 20;
+        gCanvas.height = 65;
       };
-      window.onresize = resize;
+      window.addEventListener("resize", resize);
       resize();
 
       function updateEquation() {
@@ -157,60 +202,128 @@
           `X(s) = F(s) / (${m}s² + ${c}s + ${k})`;
       }
 
+      function drawGrid() {
+        ctx.strokeStyle = "#141417";
+        ctx.lineWidth = 1;
+        const gridSize = 40;
+        for (let i = 0; i < w; i += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, h);
+          ctx.stroke();
+        }
+        for (let j = 0; j < h; j += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, j);
+          ctx.lineTo(w, j);
+          ctx.stroke();
+        }
+      }
+
       function draw() {
         ctx.fillStyle = "#0a0a0c";
         ctx.fillRect(0, 0, w, h);
 
+        drawGrid();
+
+        // Ceiling Line
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(w, 0);
+        ctx.stroke();
+
         if (!dragging) {
-          let forceSpring = -k * x;
-          let forceDamping = -c * v;
-          let acceleration = (forceSpring + forceDamping) / m;
-          v += acceleration * dt;
+          let fS = -k * x,
+            fD = -c * v,
+            acc = (fS + fD) / m;
+          v += acc * dt;
           x += v * dt;
         }
 
         history.push(x);
         if (history.length > 100) history.shift();
 
-        // Draw System
+        // System Layout: Hang from top (y=0)
+        // Equilibrium position set to 45% for a longer spring look
         const cx = w / 2,
-          cy = h / 2,
-          bx = cy + x;
-        ctx.strokeStyle = "#333";
+          oy = 0,
+          bx = h * 0.45 + x;
+
+        // Realistic Zigzag Spring
+        ctx.strokeStyle = "#555";
         ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
         ctx.beginPath();
-        ctx.moveTo(cx, 0);
-        ctx.lineTo(cx, bx);
+        ctx.moveTo(cx, oy);
+        const coils = 18; // More coils for longer look
+        const springWidth = window.innerWidth > 600 ? 18 : 12;
+        for (let i = 0; i <= coils; i++) {
+          const ly = oy + (bx / coils) * i;
+          let lx =
+            cx +
+            (i > 0 && i < coils
+              ? i % 2 === 0
+                ? springWidth
+                : -springWidth
+              : 0);
+          ctx.lineTo(lx, ly);
+        }
         ctx.stroke();
 
+        // Mass Block
+        const size = window.innerWidth > 600 ? 50 : 44;
         ctx.fillStyle = dragging ? "#fff" : "#00ff88";
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = ctx.fillStyle;
-        ctx.fillRect(cx - 30, bx, 60, 60);
+        ctx.fillRect(cx - size / 2, bx, size, size);
         ctx.shadowBlur = 0;
 
-        // Draw Graph
+        // Oscilloscope Graph
         gCtx.fillStyle = "#000";
-        gCtx.fillRect(0, 0, 240, 100);
+        gCtx.fillRect(0, 0, gCanvas.width, 65);
         gCtx.strokeStyle = "#00ff88";
+        gCtx.lineWidth = 1.5;
         gCtx.beginPath();
+        const stepX = gCanvas.width / 100;
         history.forEach((val, i) => {
-          gCtx.lineTo(i * 2.4, 50 + val * 0.5);
+          gCtx.lineTo(i * stepX, 32.5 + val * 0.22);
         });
         gCtx.stroke();
 
         requestAnimationFrame(draw);
       }
 
-      const handleDrag = (y) => {
+      const handleInput = (y) => {
         if (dragging) {
-          x = y - h / 2 - 30;
+          x = y - (h * 0.45 + 22);
           v = 0;
         }
       };
+
       canvas.onmousedown = () => (dragging = true);
       window.onmouseup = () => (dragging = false);
-      window.onmousemove = (e) => handleDrag(e.clientY);
+      window.onmousemove = (e) => handleInput(e.clientY);
+      canvas.addEventListener(
+        "touchstart",
+        (e) => {
+          dragging = true;
+          handleInput(e.touches[0].clientY);
+        },
+        { passive: false },
+      );
+      window.addEventListener("touchend", () => (dragging = false));
+      window.addEventListener(
+        "touchmove",
+        (e) => {
+          if (dragging) {
+            handleInput(e.touches[0].clientY);
+            e.preventDefault();
+          }
+        },
+        { passive: false },
+      );
 
       document.getElementById("m").oninput = (e) => {
         m = (+e.target.value).toFixed(1);
