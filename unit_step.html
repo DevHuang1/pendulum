@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Bridge Step Response Lab</title>
+    <style>
+      :root {
+        --accent: #ffcc00;
+        --bg: #0a0a0c;
+        --grid: #141417;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: #888;
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+        display: flex;
+        touch-action: none;
+      }
+
+      canvas#canvas {
+        display: block;
+        flex-grow: 1;
+      }
+
+      .sidebar {
+        width: 170px;
+        background: rgba(10, 10, 12, 0.98);
+        padding: 15px;
+        border-right: 1px solid #222;
+        backdrop-filter: blur(15px);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
+        overflow-y: auto;
+      }
+
+      @media (max-width: 600px) {
+        .sidebar {
+          width: 130px;
+          padding: 10px;
+        }
+        .math-container {
+          font-size: 11px !important;
+        }
+      }
+
+      .slider-group {
+        margin-bottom: 12px;
+      }
+      .label {
+        font-size: 8px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .val {
+        color: var(--accent);
+        font-family: monospace;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        height: 20px;
+        appearance: none;
+        background: transparent;
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 2px;
+        background: #333;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #fff;
+        border-radius: 50%;
+        margin-top: -7px;
+      }
+
+      /* Fixed Fraction Styling */
+      .math-container {
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--accent);
+        border-radius: 8px;
+        color: #eee;
+        margin-top: 15px;
+        font-family: serif;
+      }
+      .eq-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+      }
+      .fraction {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0 4px;
+      }
+      .numerator {
+        border-bottom: 1px solid #eee;
+        padding: 0 3px;
+      }
+      .denominator {
+        padding: 0 3px;
+        font-size: 0.85em;
+      }
+      .s-pow {
+        font-size: 0.6rem;
+        vertical-align: super;
+      }
+
+      .btn {
+        width: 100%;
+        background: var(--accent);
+        border: none;
+        color: #000;
+        padding: 12px;
+        font-weight: bold;
+        font-size: 9px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 15px;
+        text-transform: uppercase;
+      }
+
+      #graphCanvas {
+        width: 100%;
+        height: 70px;
+        background: #000;
+        border-radius: 4px;
+        margin-top: 8px;
+        border: 1px solid #222;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h3
+        style="color: #fff; font-size: 12px; margin-top: 0; letter-spacing: 1px"
+      >
+        BRIDGE LAB
+      </h3>
+
+      <div class="slider-group">
+        <div class="label">Mass (m) <span class="val" id="mVal">2.0</span></div>
+        <input type="range" id="m" min="1" max="10" step="0.5" value="2.0" />
+      </div>
+
+      <div class="slider-group">
+        <div class="label">
+          Damping (c) <span class="val" id="cVal">0.3</span>
+        </div>
+        <input type="range" id="c" min="0.05" max="2" step="0.05" value="0.3" />
+      </div>
+
+      <div class="slider-group">
+        <div class="label">
+          Stiffness (k) <span class="val" id="kVal">20</span>
+        </div>
+        <input type="range" id="k" min="10" max="100" value="20" />
+      </div>
+
+      <div class="math-container">
+        <div class="eq-row">
+          <span>G(s)=</span>
+          <div class="fraction">
+            <div class="numerator">1</div>
+            <div class="denominator">
+              <span id="m-t">2.0</span>s<span class="s-pow">2</span>+<span
+                id="c-t"
+                >0.3</span
+              >s+<span id="k-t">20</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="applyLoad()">Apply Step Load</button>
+
+      <div
+        style="
+          font-size: 8px;
+          margin-top: 15px;
+          color: #444;
+          text-transform: uppercase;
+        "
+      >
+        Step Response x(t)
+      </div>
+      <canvas id="graphCanvas"></canvas>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("canvas"),
+        ctx = canvas.getContext("2d");
+      const gCanvas = document.getElementById("graphCanvas"),
+        gCtx = gCanvas.getContext("2d");
+
+      let w,
+        h,
+        x = 0,
+        v = 0,
+        k = 20,
+        c = 0.3,
+        m = 2.0;
+      let stepActive = false,
+        history = [],
+        carPos = -200;
+      const dt = 1 / 60;
+
+      const resize = () => {
+        const sw = window.innerWidth > 600 ? 170 : 130;
+        w = canvas.width = window.innerWidth - sw;
+        h = canvas.height = window.innerHeight;
+        gCanvas.width = sw - 30;
+        gCanvas.height = 70;
+      };
+      window.addEventListener("resize", resize);
+      resize();
+
+      function applyLoad() {
+        stepActive = !stepActive;
+        const btn = document.querySelector(".btn");
+        btn.innerText = stepActive ? "Release Load" : "Apply Step Load";
+        btn.style.background = stepActive ? "#ff4444" : "#ffcc00";
+      }
+
+      function updateMath() {
+        document.getElementById("m-t").innerText = m.toFixed(1);
+        document.getElementById("c-t").innerText = c.toFixed(2);
+        document.getElementById("k-t").innerText = k;
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = "#141417";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < w; i += 40) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i, h);
+          ctx.stroke();
+        }
+        for (let j = 0; j < h; j += 40) {
+          ctx.beginPath();
+          ctx.moveTo(0, j);
+          ctx.lineTo(w, j);
+          ctx.stroke();
+        }
+      }
+
+      function draw() {
+        ctx.fillStyle = "#0a0a0c";
+        ctx.fillRect(0, 0, w, h);
+        drawGrid();
+
+        // Physics logic
+        let externalForce = stepActive ? 60 : 0;
+        let fS = -k * x,
+          fD = -c * v;
+        let acc = (fS + fD + externalForce) / m;
+        v += acc * dt;
+        x += v * dt;
+
+        history.push(x);
+        if (history.length > 100) history.shift();
+
+        const cx = w / 2,
+          cy = h * 0.5,
+          bridgeY = cy + x;
+
+        // Draw Piers
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.moveTo(cx - 120, h);
+        ctx.lineTo(cx - 120, cy + 60);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + 120, h);
+        ctx.lineTo(cx + 120, cy + 60);
+        ctx.stroke();
+
+        // Draw Springs
+        ctx.strokeStyle = "#444";
+        ctx.lineWidth = 2;
+        [cx - 100, cx + 100].forEach((p) => {
+          ctx.beginPath();
+          ctx.moveTo(p, 0);
+          for (let i = 0; i <= 15; i++) {
+            let ly = (bridgeY / 15) * i;
+            let lx = p + (i > 0 && i < 15 ? (i % 2 == 0 ? 12 : -12) : 0);
+            ctx.lineTo(lx, ly);
+          }
+          ctx.stroke();
+        });
+
+        // Draw Deck
+        ctx.fillStyle = "#222";
+        ctx.fillRect(cx - 150, bridgeY, 300, 20);
+        ctx.fillStyle = stepActive ? "#ffcc00" : "#444";
+        ctx.fillRect(cx - 150, bridgeY, 300, 4);
+
+        // Truck Animation (Unit Step Visualization)
+        if (stepActive) {
+          carPos += (cx - carPos) * 0.1;
+        } else {
+          carPos += (-300 - carPos) * 0.1;
+        }
+        ctx.fillStyle = "#ff4444";
+        ctx.fillRect(carPos - 20, bridgeY - 15, 40, 15); // Truck body
+        ctx.fillStyle = "#000";
+        ctx.fillRect(carPos - 15, bridgeY - 5, 8, 8); // Wheels
+        ctx.fillRect(carPos + 7, bridgeY - 5, 8, 8);
+
+        // Graph
+        gCtx.fillStyle = "#000";
+        gCtx.fillRect(0, 0, gCanvas.width, 70);
+        gCtx.strokeStyle = "#ffcc00";
+        gCtx.lineWidth = 1.5;
+        gCtx.beginPath();
+        history.forEach((val, i) =>
+          gCtx.lineTo(i * (gCanvas.width / 100), 50 - val * 0.6),
+        );
+        gCtx.stroke();
+
+        requestAnimationFrame(draw);
+      }
+
+      document.getElementById("m").oninput = (e) => {
+        m = +e.target.value;
+        document.getElementById("mVal").innerText = m;
+        updateMath();
+      };
+      document.getElementById("c").oninput = (e) => {
+        c = +e.target.value;
+        document.getElementById("cVal").innerText = c;
+        updateMath();
+      };
+      document.getElementById("k").oninput = (e) => {
+        k = +e.target.value;
+        document.getElementById("kVal").innerText = k;
+        updateMath();
+      };
+
+      draw();
+    </script>
+  </body>
+</html>

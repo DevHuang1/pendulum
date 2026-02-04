@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -10,6 +10,7 @@
       :root {
         --neon-blue: #00f2ff;
         --neon-pink: #ff007b;
+        --neon-yellow: #ffcc00; /* New color for Bridge */
         --bg-dark: #050506;
       }
 
@@ -19,24 +20,23 @@
         background: var(--bg-dark);
         color: white;
         font-family: "Inter", sans-serif;
-        height: 100vh;
+        min-height: 100vh; /* Changed to min-height for scrolling if needed */
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
-        background-image: linear-gradient(
-            rgba(0, 242, 255, 0.03) 1px,
-            transparent 1px
-          ),
+        overflow-x: hidden;
+        background-image:
+          linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
           linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px);
         background-size: 40px 40px;
       }
 
       .header {
         text-align: center;
-        margin-bottom: 50px;
+        margin-bottom: 40px;
         z-index: 10;
+        margin-top: 20px;
       }
 
       h1 {
@@ -52,7 +52,7 @@
       }
 
       .subtitle {
-        font-size: 12px;
+        font-size: 10px;
         letter-spacing: 4px;
         color: #555;
         text-transform: uppercase;
@@ -61,15 +61,16 @@
 
       .menu-container {
         display: flex;
-        gap: 30px;
+        gap: 20px;
         flex-wrap: wrap;
         justify-content: center;
         padding: 20px;
+        max-width: 1000px;
       }
 
       .card {
-        width: 280px;
-        height: 380px;
+        width: 260px;
+        height: 340px;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 15px;
@@ -112,6 +113,7 @@
         transform: translateX(100%);
       }
 
+      /* Card Themes */
       .pendulum-card {
         --accent-color: var(--neon-blue);
         --shadow-color: rgba(0, 242, 255, 0.2);
@@ -120,24 +122,28 @@
         --accent-color: var(--neon-pink);
         --shadow-color: rgba(255, 0, 123, 0.2);
       }
+      .unitstep-card {
+        --accent-color: var(--neon-yellow);
+        --shadow-color: rgba(255, 204, 0, 0.2);
+      }
 
       .icon {
-        font-size: 50px;
+        font-size: 44px;
         margin-bottom: 20px;
       }
 
       .card h2 {
         font-family: "Orbitron", sans-serif;
-        font-size: 18px;
+        font-size: 16px;
         margin: 0;
         letter-spacing: 2px;
       }
 
       .card p {
-        font-size: 11px;
+        font-size: 10px;
         color: #777;
         text-align: center;
-        padding: 0 30px;
+        padding: 0 25px;
         margin-top: 15px;
         line-height: 1.6;
       }
@@ -145,17 +151,26 @@
       .status {
         position: absolute;
         bottom: 20px;
-        font-size: 10px;
+        font-size: 9px;
         font-family: monospace;
         color: var(--accent-color);
         opacity: 0.7;
       }
 
-      /* Responsive Mobile Tweak */
       @media (max-width: 600px) {
         .card {
-          width: 220px;
-          height: 300px;
+          width: 180px;
+          height: 260px;
+        }
+        .icon {
+          font-size: 30px;
+        }
+        .card h2 {
+          font-size: 12px;
+        }
+        .card p {
+          font-size: 9px;
+          padding: 0 15px;
         }
       }
     </style>
@@ -163,7 +178,7 @@
   <body>
     <div class="header">
       <h1>Lab Pro</h1>
-      <div class="subtitle">S-Domain Simulation Suite v1.0</div>
+      <div class="subtitle">S-Domain Simulation Suite v1.1</div>
     </div>
 
     <div class="menu-container">
@@ -183,6 +198,16 @@
           Linear harmonic oscillator simulation. Damping and stiffness analysis.
         </p>
         <div class="status">SYSTEM: ONLINE</div>
+      </a>
+
+      <a href="unit_step.html" class="card unitstep-card">
+        <div class="icon">⎶</div>
+        <h2>BRIDGE STEP</h2>
+        <p>
+          Structural vibration under sudden loads using Unit Step input
+          functions.
+        </p>
+        <div class="status">SYSTEM: ACTIVE</div>
       </a>
     </div>
   </body>
